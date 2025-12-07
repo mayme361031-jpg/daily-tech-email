@@ -1,8 +1,8 @@
-# main1.py
+# main2.py
 import os, requests, smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from datetime import datetime, timedelta
+from datetime import datetime
 
 HF = os.environ["HF_API_KEY"]
 MAIL_USER = os.environ["MAIL_USER"]
@@ -15,15 +15,15 @@ def get_news():
         "Content-Type": "application/json"
     }
     payload = {
-        "model": "deepseek-ai/DeepSeek-V3.2",
+        "model": "Qwen/Qwen2.5-Coder-7B-Instruct",
         "messages": [
             {"role": "user", "content":
              "请用中文详细总结：昨天全球范围内有哪些新技术刚刚宣布即将商业化？包括技术、公司、产品。"}
         ],
-        "max_tokens": 400,
-        "temperature": 0.7
+        "max_tokens": 500,
+        "temperature": 0.8
     }
-    resp = requests.post(url, headers=headers, json=payload, timeout=120)
+    resp = requests.post(url, headers=headers, json=payload, timeout=180)
     resp.raise_for_status()
     j = resp.json()
     return j["choices"][0]["message"]["content"]
@@ -40,6 +40,6 @@ def send_email(subj, body):
     server.quit()
 
 if __name__ == "__main__":
-    subj = "Daily Tech - DeepSeek " + datetime.utcnow().strftime("%Y-%m-%d")
+    subj = "Daily Tech - Qwen7B " + datetime.utcnow().strftime("%Y-%m-%d")
     body = get_news()
     send_email(subj, body)
