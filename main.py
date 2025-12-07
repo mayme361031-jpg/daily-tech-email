@@ -14,14 +14,13 @@ hf_api_key = os.environ["HF_API_KEY"]
 
 # -------------------------------
 # 2️⃣ 生成前一天科技资讯内容
-#    这里示例使用 HuggingFace 模型生成内容
 # -------------------------------
 def get_daily_tech_news():
     """
     使用 HuggingFace 模型 API 生成科技新闻摘要
+    模型: bigscience/bloom-560m
     """
-    # 示例：使用 text-generation 模型
-    url = "https://api-inference.huggingface.co/models/gpt2"
+    url = "https://api-inference.huggingface.co/models/bigscience/bloom-560m"
     headers = {"Authorization": f"Bearer {hf_api_key}"}
     payload = {
         "inputs": "Generate a detailed paragraph about the latest technology that is ready for commercialization globally yesterday:",
@@ -29,13 +28,13 @@ def get_daily_tech_news():
     }
 
     try:
-        response = requests.post(url, headers=headers, json=payload, timeout=30)
+        response = requests.post(url, headers=headers, json=payload, timeout=60)
         response.raise_for_status()
         data = response.json()
+        # 模型返回结果解析
         if isinstance(data, list) and "generated_text" in data[0]:
             return data[0]["generated_text"]
         elif isinstance(data, list) and "generated_text" not in data[0]:
-            # 有些模型返回 format 可能不同
             return data[0].get("text", "No content generated.")
         else:
             return "No content generated."
@@ -54,7 +53,6 @@ def send_email(subject, body, to_email):
     msg.attach(MIMEText(body, 'plain'))
 
     try:
-        # 连接 Gmail SMTP 服务器
         server = smtplib.SMTP_SSL('smtp.gmail.com', 465)
         server.login(mail_user, mail_pass)
         server.send_message(msg)
@@ -67,7 +65,6 @@ def send_email(subject, body, to_email):
 # 4️⃣ 主程序
 # -------------------------------
 if __name__ == "__main__":
-    # 邮件主题
     today = datetime.utcnow().strftime("%Y-%m-%d")
     subject = f"Daily Technology Summary - {today}"
 
