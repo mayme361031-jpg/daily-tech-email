@@ -1,75 +1,58 @@
+# main.py
 import os
+from huggingface_hub import InferenceClient
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-import requests
 from datetime import datetime
-import json
 
-# -------------------------------
-# 1️⃣ 读取 GitHub Secrets
-# -------------------------------
-mail_user = os.environ["MAIL_USER"]
-mail_pass = os.environ["MAIL_PASS"]
-hf_api_key = os.environ["HF_API_KEY"]
+# ===== 配置环境变量 =====
+# 1. HF_API_KEY: Hugging Face 免费 API Key
+# 2. MAIL_USER: 你的 Gmail 地址
+# 3. MAIL_PASS: Gmail 应用专用密码
+HF_API_KEY = os.environ.get("HF_API_KEY")
+MAIL_USER = os.environ.get("MAIL_USER")
+MAIL_PASS = os.environ.get("MAIL_PASS")
 
-# -------------------------------
-# 2️⃣ 使用 HuggingFace Router API 生成内容
-# -------------------------------
+# ===== 获取每日新技术内容 =====
 def get_daily_tech_news():
-    """
-    使用 HuggingFace Router API 生成科技新闻段落
-    模型示例: bigscience/bloom-560m
-    """
-    url = "https://router.huggingface.co/api/v1/generate"
-    headers = {
-        "Authorization": f"Bearer {hf_api_key}",
-        "Content-Type": "application/json"
-    }
-    payload = {
-        "model": "bigscience/bloom-560m",
-        "inputs": "Generate a detailed paragraph about the latest technology that is ready for commercialization globally yesterday:",
-        "parameters": {"max_new_tokens": 300}
-    }
-
+    client = InferenceClient(token=HF_API_KEY)
+    prompt = (
+        "请用中文详细总结：昨天全球范围内有哪些新技术刚刚宣布即将商业化？"
+        "请列出技术名称、对应公司、对应产品，并用段落形式说明。"
+    )
     try:
-        response = requests.post(url, headers=headers, data=json.dumps(payload), timeout=60)
-        response.raise_for_status()
-        data = response.json()
-        # Router API 返回结果是列表，每个 item 有 'generated_text'
-        if isinstance(data, list) and len(data) > 0 and "generated_text" in data[0]:
-            return data[0]["generated_text"]
-        else:
-            return "No content generated."
+        response = client.chat_completion(
+            model="meta-llama/Llama-3-1B-Instruct",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=500,
+            temperature=0.7
+        )
+        # 提取生成的文本
+        content = response.choices[0].message.content
+        return content
     except Exception as e:
-        return f"Error generating content: {e}"
+        return f"Error generating content: {str(e)}"
 
-# -------------------------------
-# 3️⃣ 发送邮件函数
-# -------------------------------
-def send_email(subject, body, to_email):
+# ===== 发送邮件 =====
+def send_email(subject, body, to_addr):
     msg = MIMEMultipart()
-    msg['From'] = mail_user
-    msg['To'] = to_email
-    msg['Subject'] = subject
-
+    msg["From"] = MAIL_USER
+    msg["To"] = to_addr
+    msg["Subject"] = subject
     msg.attach(MIMEText(body, 'plain'))
 
     try:
-        server = smtplib.SMTP_SSL('smtp.gmail.com', 465)
-        server.login(mail_user, mail_pass)
-        server.send_message(msg)
+        server = smtplib.SMTP_SSL("smtp.gmail.com", 465)
+        server.login(MAIL_USER, MAIL_PASS)
+        server.sendmail(MAIL_USER, to_addr, msg.as_string())
         server.quit()
-        print(f"Email sent to {to_email}")
+        print("Email sent successfully!")
     except Exception as e:
-        print(f"Error sending email: {e}")
+        print(f"Error sending email: {str(e)}")
 
-# -------------------------------
-# 4️⃣ 主程序
-# -------------------------------
+# ===== 主程序 =====
 if __name__ == "__main__":
-    today = datetime.utcnow().strftime("%Y-%m-%d")
-    subject = f"Daily Technology Summary - {today}"
-
-    body = get_daily_tech_news()
-    send_email(subject, body, mail_user)
+    content = get_daily_tech_news()
+    subject = f"每日全球新技术摘要 {datetime.utcnow().strftime('%Y-%m-%d')}"
+    send_email(subject, content, MAIL_USER)
