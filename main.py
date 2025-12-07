@@ -1,4 +1,4 @@
-# main2.py
+# main3.py
 import os, requests, smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -15,15 +15,15 @@ def get_news():
         "Content-Type": "application/json"
     }
     payload = {
-        "model": "Qwen/Qwen2.5-Coder-7B-Instruct",
+        "model": "google/gemma-2-2b-it",
         "messages": [
             {"role": "user", "content":
              "请用中文详细总结：昨天全球范围内有哪些新技术刚刚宣布即将商业化？包括技术、公司、产品。"}
         ],
-        "max_tokens": 500,
-        "temperature": 0.8
+        "max_tokens": 350,
+        "temperature": 0.7
     }
-    resp = requests.post(url, headers=headers, json=payload, timeout=180)
+    resp = requests.post(url, headers=headers, json=payload, timeout=120)
     resp.raise_for_status()
     j = resp.json()
     return j["choices"][0]["message"]["content"]
@@ -40,6 +40,6 @@ def send_email(subj, body):
     server.quit()
 
 if __name__ == "__main__":
-    subj = "Daily Tech - Qwen7B " + datetime.utcnow().strftime("%Y-%m-%d")
+    subj = "Daily Tech - Gemma2b " + datetime.utcnow().strftime("%Y-%m-%d")
     body = get_news()
     send_email(subj, body)
