@@ -4,6 +4,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import requests
 from datetime import datetime
+import json
 
 # -------------------------------
 # 1️⃣ 读取 GitHub Secrets
@@ -13,29 +14,31 @@ mail_pass = os.environ["MAIL_PASS"]
 hf_api_key = os.environ["HF_API_KEY"]
 
 # -------------------------------
-# 2️⃣ 生成前一天科技资讯内容
+# 2️⃣ 使用 HuggingFace Router API 生成内容
 # -------------------------------
 def get_daily_tech_news():
     """
-    使用 HuggingFace 模型 API 生成科技新闻摘要
-    模型: bigscience/bloom-560m
+    使用 HuggingFace Router API 生成科技新闻段落
+    模型示例: bigscience/bloom-560m
     """
-    url = "https://api-inference.huggingface.co/models/bigscience/bloom-560m"
-    headers = {"Authorization": f"Bearer {hf_api_key}"}
+    url = "https://router.huggingface.co/api/v1/generate"
+    headers = {
+        "Authorization": f"Bearer {hf_api_key}",
+        "Content-Type": "application/json"
+    }
     payload = {
+        "model": "bigscience/bloom-560m",
         "inputs": "Generate a detailed paragraph about the latest technology that is ready for commercialization globally yesterday:",
         "parameters": {"max_new_tokens": 300}
     }
 
     try:
-        response = requests.post(url, headers=headers, json=payload, timeout=60)
+        response = requests.post(url, headers=headers, data=json.dumps(payload), timeout=60)
         response.raise_for_status()
         data = response.json()
-        # 模型返回结果解析
-        if isinstance(data, list) and "generated_text" in data[0]:
+        # Router API 返回结果是列表，每个 item 有 'generated_text'
+        if isinstance(data, list) and len(data) > 0 and "generated_text" in data[0]:
             return data[0]["generated_text"]
-        elif isinstance(data, list) and "generated_text" not in data[0]:
-            return data[0].get("text", "No content generated.")
         else:
             return "No content generated."
     except Exception as e:
@@ -68,8 +71,5 @@ if __name__ == "__main__":
     today = datetime.utcnow().strftime("%Y-%m-%d")
     subject = f"Daily Technology Summary - {today}"
 
-    # 获取前一天科技内容
     body = get_daily_tech_news()
-
-    # 发送邮件
-    send_email(subject, body, mail_user)  # 发给自己
+    send_email(subject, body, mail_user)
